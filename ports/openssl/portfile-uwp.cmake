@@ -6,13 +6,13 @@
 #   CURRENT_PACKAGES_DIR  = ${VCPKG_ROOT_DIR}\packages\${PORT}_${TARGET_TRIPLET}
 #
 
-if (VCPKG_LIBRARY_LINKAGE STREQUAL static)
-    set(VCPKG_LIBRARY_LINKAGE dynamic)
-    message("Static building not supported yet")
-endif()
 
 if (NOT VCPKG_CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
     message(FATAL_ERROR "This portfile only supports UWP")
+endif()
+
+if (VCPKG_LIBRARY_LINKAGE STREQUAL dynamic)
+    set(OPENSSL_BUILD_SUFFIX dll)
 endif()
 
 if (VCPKG_TARGET_ARCHITECTURE STREQUAL "arm")
@@ -43,9 +43,9 @@ vcpkg_download_distfile(ARCHIVE
 
 vcpkg_extract_source_archive(${ARCHIVE})
 
-file(REMOVE_RECURSE ${SOURCE_PATH}/tmp32dll)
-file(REMOVE_RECURSE ${SOURCE_PATH}/out32dll)
-file(REMOVE_RECURSE ${SOURCE_PATH}/inc32dll)
+file(REMOVE_RECURSE ${SOURCE_PATH}/tmp32${OPENSSL_BUILD_SUFFIX})
+file(REMOVE_RECURSE ${SOURCE_PATH}/out32${OPENSSL_BUILD_SUFFIX})
+file(REMOVE_RECURSE ${SOURCE_PATH}/inc32${OPENSSL_BUILD_SUFFIX})
 
 file(
     COPY ${CMAKE_CURRENT_LIST_DIR}/make-openssl.bat
@@ -54,7 +54,7 @@ file(
 
 message(STATUS "Build ${TARGET_TRIPLET}")
 vcpkg_execute_required_process(
-    COMMAND ${SOURCE_PATH}/make-openssl.bat ${UWP_PLATFORM}
+    COMMAND ${SOURCE_PATH}/make-openssl.bat ${UWP_PLATFORM} ${VCPKG_LIBRARY_LINKAGE}
     WORKING_DIRECTORY ${SOURCE_PATH}
     LOGNAME make-openssl-${TARGET_TRIPLET}
 )
@@ -65,28 +65,32 @@ file(
     DESTINATION ${CURRENT_PACKAGES_DIR}/include
 )
 
-file(INSTALL
-    ${SOURCE_PATH}/out32dll/libeay32.dll
-    ${SOURCE_PATH}/out32dll/libeay32.pdb
-    ${SOURCE_PATH}/out32dll/ssleay32.dll
-    ${SOURCE_PATH}/out32dll/ssleay32.pdb
-    DESTINATION ${CURRENT_PACKAGES_DIR}/bin)
+if (VCPKG_LIBRARY_LINKAGE STREQUAL dynamic)
+    file(INSTALL
+        ${SOURCE_PATH}/out32dll/libeay32.dll
+        ${SOURCE_PATH}/out32dll/libeay32.pdb
+        ${SOURCE_PATH}/out32dll/ssleay32.dll
+        ${SOURCE_PATH}/out32dll/ssleay32.pdb
+        DESTINATION ${CURRENT_PACKAGES_DIR}/bin)
+endif()
 
 file(INSTALL
-    ${SOURCE_PATH}/out32dll/libeay32.lib
-    ${SOURCE_PATH}/out32dll/ssleay32.lib
+    ${SOURCE_PATH}/out32${OPENSSL_BUILD_SUFFIX}/libeay32.lib
+    ${SOURCE_PATH}/out32${OPENSSL_BUILD_SUFFIX}/ssleay32.lib
     DESTINATION ${CURRENT_PACKAGES_DIR}/lib)
 
-file(INSTALL
-    ${SOURCE_PATH}/out32dll/libeay32.dll
-    ${SOURCE_PATH}/out32dll/libeay32.pdb
-    ${SOURCE_PATH}/out32dll/ssleay32.dll
-    ${SOURCE_PATH}/out32dll/ssleay32.pdb
-    DESTINATION ${CURRENT_PACKAGES_DIR}/debug/bin)
+if (VCPKG_LIBRARY_LINKAGE STREQUAL dynamic)
+    file(INSTALL
+        ${SOURCE_PATH}/out32dll/libeay32.dll
+        ${SOURCE_PATH}/out32dll/libeay32.pdb
+        ${SOURCE_PATH}/out32dll/ssleay32.dll
+        ${SOURCE_PATH}/out32dll/ssleay32.pdb
+        DESTINATION ${CURRENT_PACKAGES_DIR}/debug/bin)
+endif()
 
 file(INSTALL
-    ${SOURCE_PATH}/out32dll/libeay32.lib
-    ${SOURCE_PATH}/out32dll/ssleay32.lib
+    ${SOURCE_PATH}/out32${OPENSSL_OUT_SUFFIX}/libeay32.lib
+    ${SOURCE_PATH}/out32${OPENSSL_OUT_SUFFIX}/ssleay32.lib
     DESTINATION ${CURRENT_PACKAGES_DIR}/debug/lib)
 
 file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/openssl RENAME copyright)
